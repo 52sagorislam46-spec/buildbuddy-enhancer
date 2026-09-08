@@ -84,6 +84,11 @@ export function MessagesPage({
     {},
   );
   const [prefsVersion, setPrefsVersion] = useState(0);
+  // Re-renders on a timer so a person who left the app flips to "offline"
+  // once the 5-minute reachable window runs out (and back to active when a
+  // new push refreshes it).
+  const [, setPresenceTick] = useState(0);
+
   const [readAtMap, setReadAtMap] = useState<Record<string, number>>({});
   const [menuFor, setMenuFor] = useState<Conversation | null>(null);
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -99,6 +104,13 @@ export function MessagesPage({
       unsub();
     };
   }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => setPresenceTick((v) => v + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+
 
   const prefsOf = useCallback(
     (otherId: string): ChatPrefs => {
