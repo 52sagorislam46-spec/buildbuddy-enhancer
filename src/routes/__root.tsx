@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { initSingleVideoPlayback } from "../lib/singleVideo";
 
 function NotFoundComponent() {
   return (
@@ -116,6 +117,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => initSingleVideoPlayback(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

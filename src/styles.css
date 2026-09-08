@@ -142,3 +142,97 @@
     color: var(--color-foreground);
   }
 }
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ---------------------------------------------------------------
+ * Optional dark theme (toggled from the profile Menu).
+ * Only active when <html> has the .dark class — the light design
+ * is untouched otherwise.
+ * ------------------------------------------------------------- */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #0f172a;
+  color: #e5e7eb;
+}
+
+.dark .bg-white,
+.dark .bg-white\/90,
+.dark .bg-white\/80,
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+  background-color: #1e293b !important;
+}
+
+.dark .text-gray-900,
+.dark .text-gray-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-gray-700,
+.dark .text-gray-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-gray-500,
+.dark .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+.dark .border-gray-100,
+.dark .border-gray-200 {
+  border-color: #334155 !important;
+}
+
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover {
+  background-color: #334155 !important;
+}
+
+.dark .from-sky-50 {
+  --tw-gradient-from: #0f172a !important;
+}
+
+.dark .via-white,
+.dark .to-white {
+  --tw-gradient-via: #0f172a !important;
+  --tw-gradient-to: #0f172a !important;
+}
+
+/* Chat bubbles: block Android long-press text selection / Google search popup */
+.select-none,
+.select-none * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Global: prevent Android long-press text selection popup & blue tap highlight.
+   Inputs, textareas and elements opting in with .select-text stay selectable. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body,
+body * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"],
+[contenteditable="true"] *,
+.select-text,
+.select-text * {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
