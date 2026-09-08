@@ -105,6 +105,13 @@ export function MessagesPage({
     };
   }, []);
 
+  useEffect(() => {
+    const id = setInterval(() => setPresenceTick((v) => v + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+
+
   const prefsOf = useCallback(
     (otherId: string): ChatPrefs => {
       void prefsVersion;
