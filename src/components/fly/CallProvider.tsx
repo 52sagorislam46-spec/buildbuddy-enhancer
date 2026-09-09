@@ -187,6 +187,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const [speakerOn, setSpeakerOn] = useState(true);
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [minimized, setMinimized] = useState(false);
+  /** Messenger-style: tap the small tile to swap self/remote views. */
+  const [swapped, setSwapped] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -913,6 +915,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       setMinimized(false);
       setSpeakerOn(true);
       setFacing("user");
+      setSwapped(false);
       return;
     }
     if (phase !== "connected") return;
