@@ -428,7 +428,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       };
       window.addEventListener("pointerdown", retry, { once: true });
     });
-  }, [remoteReady, remoteVideoTick, phase, call]);
+  }, [remoteReady, remoteVideoTick, phase, call, swapped]);
 
   /**
    * Keep the local preview bound to our own camera stream. The preview
