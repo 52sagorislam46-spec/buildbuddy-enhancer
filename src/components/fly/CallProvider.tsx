@@ -187,6 +187,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const [speakerOn, setSpeakerOn] = useState(true);
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [minimized, setMinimized] = useState(false);
+  /** Messenger-style: tap the small tile to swap self/remote views. */
+  const [swapped, setSwapped] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -426,7 +428,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       };
       window.addEventListener("pointerdown", retry, { once: true });
     });
-  }, [remoteReady, remoteVideoTick, phase, call]);
+  }, [remoteReady, remoteVideoTick, phase, call, swapped, minimized]);
 
   /**
    * Keep the local preview bound to our own camera stream. The preview
@@ -913,6 +915,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       setMinimized(false);
       setSpeakerOn(true);
       setFacing("user");
+      setSwapped(false);
       return;
     }
     if (phase !== "connected") return;
@@ -1074,6 +1077,15 @@ export function CallProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // Some phones silently hand back the SAME front camera even when the
+    // back one was requested — verify what we actually got before accepting.
+    const matchesRequest = (track: MediaStreamTrack) => {
+      const actual = track.getSettings().facingMode;
+      if (!actual) return true; // browser does not report it — trust the request
+      if (next === "environment") return actual === "environment";
+      return actual === "user";
+    };
+
     // 1) Ask explicitly for the other lens.
     for (const constraint of [
       { facingMode: { exact: next } },
@@ -1092,33 +1104,39 @@ export function CallProvider({ children }: { children: ReactNode }) {
           audio: false,
         });
         const track = fresh.getVideoTracks()[0];
-        if (track) {
+        if (track && matchesRequest(track)) {
           await applyTrack(track);
           return;
         }
+        // Wrong lens came back — release it and keep trying.
+        track?.stop();
       } catch {
         /* try the next strategy */
       }
     }
 
-    // 2) Some browsers only expose multiple deviceIds.
+    // 2) Some browsers only expose multiple deviceIds — try EVERY other
+    // camera, not just the first, until one gives the lens we asked for.
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const cams = devices.filter((d) => d.kind === "videoinput");
-      if (cams.length > 1) {
-        const currentId = current?.getSettings().deviceId;
-        const other = cams.find((c) => c.deviceId && c.deviceId !== currentId);
-        if (other) {
+      const cams = devices.filter((d) => d.kind === "videoinput" && d.deviceId);
+      const currentId = current?.getSettings().deviceId;
+      for (const cam of cams) {
+        if (cam.deviceId === currentId) continue;
+        try {
           releaseCurrent();
           const fresh = await navigator.mediaDevices.getUserMedia({
-            video: { deviceId: { exact: other.deviceId } },
+            video: { deviceId: { exact: cam.deviceId } },
             audio: false,
           });
           const track = fresh.getVideoTracks()[0];
-          if (track) {
+          if (track && matchesRequest(track)) {
             await applyTrack(track);
             return;
           }
+          track?.stop();
+        } catch {
+          /* try the next camera */
         }
       }
     } catch {
@@ -1415,36 +1433,76 @@ export function CallProvider({ children }: { children: ReactNode }) {
                   : "absolute inset-0 z-0 bg-black"
               }
             >
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
-              
+              {/* Big screen: remote by default, own camera after a tap-swap. */}
+              {swapped && !minimized ? (
+                <video
+                  ref={bindLocalVideo}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full h-full object-cover ${
+                    facing === "user" ? "scale-x-[-1]" : ""
+                  }`}
+                />
+              ) : (
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              )}
+
 
               {!minimized ? (
-                <div className="absolute top-[calc(4.5rem+env(safe-area-inset-top))] right-4 z-10 w-32 h-48 rounded-3xl overflow-hidden border border-white/15 shadow-2xl bg-slate-800">
-                  <video
-                    ref={bindLocalVideo}
-                    autoPlay
-                    playsInline
-                    muted
-                    className={`w-full h-full object-cover ${
-                      facing === "user" ? "scale-x-[-1]" : ""
-                    }`}
-                  />
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Swap big and small video"
+                  onClick={() => setSwapped((s) => !s)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSwapped((s) => !s);
+                    }
+                  }}
+                  className="absolute top-[calc(4.5rem+env(safe-area-inset-top))] right-4 z-10 w-32 h-48 rounded-3xl overflow-hidden border border-white/15 shadow-2xl bg-slate-800 cursor-pointer"
+                >
+                  {/* Small tile: own camera by default, remote after swap. */}
+                  {swapped ? (
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <video
+                      ref={bindLocalVideo}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`w-full h-full object-cover ${
+                        facing === "user" ? "scale-x-[-1]" : ""
+                      }`}
+                    />
+                  )}
                   <button
-                    onClick={() => void switchCamera()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void switchCamera();
+                    }}
                     aria-label="Switch camera"
                     className="absolute top-2 right-2 w-10 h-10 rounded-full bg-black/55 backdrop-blur flex items-center justify-center text-white active:scale-90 transition-transform"
                   >
                     <RefreshCw size={18} />
                   </button>
                   <button
-                    onClick={() =>
-                      setEffectPanel(effectPanel ? null : "effects")
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEffectPanel(effectPanel ? null : "effects");
+                    }}
                     aria-label="Video effects"
                     className={`absolute top-14 right-2 w-10 h-10 rounded-full backdrop-blur flex items-center justify-center active:scale-90 transition-transform ${
                       effectPanel ? "bg-white text-slate-900" : "bg-white text-slate-900"
