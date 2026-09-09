@@ -1433,36 +1433,76 @@ export function CallProvider({ children }: { children: ReactNode }) {
                   : "absolute inset-0 z-0 bg-black"
               }
             >
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
-              
+              {/* Big screen: remote by default, own camera after a tap-swap. */}
+              {swapped && !minimized ? (
+                <video
+                  ref={bindLocalVideo}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full h-full object-cover ${
+                    facing === "user" ? "scale-x-[-1]" : ""
+                  }`}
+                />
+              ) : (
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              )}
+
 
               {!minimized ? (
-                <div className="absolute top-[calc(4.5rem+env(safe-area-inset-top))] right-4 z-10 w-32 h-48 rounded-3xl overflow-hidden border border-white/15 shadow-2xl bg-slate-800">
-                  <video
-                    ref={bindLocalVideo}
-                    autoPlay
-                    playsInline
-                    muted
-                    className={`w-full h-full object-cover ${
-                      facing === "user" ? "scale-x-[-1]" : ""
-                    }`}
-                  />
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Swap big and small video"
+                  onClick={() => setSwapped((s) => !s)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSwapped((s) => !s);
+                    }
+                  }}
+                  className="absolute top-[calc(4.5rem+env(safe-area-inset-top))] right-4 z-10 w-32 h-48 rounded-3xl overflow-hidden border border-white/15 shadow-2xl bg-slate-800 cursor-pointer"
+                >
+                  {/* Small tile: own camera by default, remote after swap. */}
+                  {swapped ? (
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <video
+                      ref={bindLocalVideo}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`w-full h-full object-cover ${
+                        facing === "user" ? "scale-x-[-1]" : ""
+                      }`}
+                    />
+                  )}
                   <button
-                    onClick={() => void switchCamera()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void switchCamera();
+                    }}
                     aria-label="Switch camera"
                     className="absolute top-2 right-2 w-10 h-10 rounded-full bg-black/55 backdrop-blur flex items-center justify-center text-white active:scale-90 transition-transform"
                   >
                     <RefreshCw size={18} />
                   </button>
                   <button
-                    onClick={() =>
-                      setEffectPanel(effectPanel ? null : "effects")
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEffectPanel(effectPanel ? null : "effects");
+                    }}
                     aria-label="Video effects"
                     className={`absolute top-14 right-2 w-10 h-10 rounded-full backdrop-blur flex items-center justify-center active:scale-90 transition-transform ${
                       effectPanel ? "bg-white text-slate-900" : "bg-white text-slate-900"
