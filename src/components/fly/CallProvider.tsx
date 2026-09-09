@@ -1077,6 +1077,15 @@ export function CallProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // Some phones silently hand back the SAME front camera even when the
+    // back one was requested — verify what we actually got before accepting.
+    const matchesRequest = (track: MediaStreamTrack) => {
+      const actual = track.getSettings().facingMode;
+      if (!actual) return true; // browser does not report it — trust the request
+      if (next === "environment") return actual === "environment";
+      return actual === "user";
+    };
+
     // 1) Ask explicitly for the other lens.
     for (const constraint of [
       { facingMode: { exact: next } },
@@ -1095,33 +1104,39 @@ export function CallProvider({ children }: { children: ReactNode }) {
           audio: false,
         });
         const track = fresh.getVideoTracks()[0];
-        if (track) {
+        if (track && matchesRequest(track)) {
           await applyTrack(track);
           return;
         }
+        // Wrong lens came back — release it and keep trying.
+        track?.stop();
       } catch {
         /* try the next strategy */
       }
     }
 
-    // 2) Some browsers only expose multiple deviceIds.
+    // 2) Some browsers only expose multiple deviceIds — try EVERY other
+    // camera, not just the first, until one gives the lens we asked for.
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const cams = devices.filter((d) => d.kind === "videoinput");
-      if (cams.length > 1) {
-        const currentId = current?.getSettings().deviceId;
-        const other = cams.find((c) => c.deviceId && c.deviceId !== currentId);
-        if (other) {
+      const cams = devices.filter((d) => d.kind === "videoinput" && d.deviceId);
+      const currentId = current?.getSettings().deviceId;
+      for (const cam of cams) {
+        if (cam.deviceId === currentId) continue;
+        try {
           releaseCurrent();
           const fresh = await navigator.mediaDevices.getUserMedia({
-            video: { deviceId: { exact: other.deviceId } },
+            video: { deviceId: { exact: cam.deviceId } },
             audio: false,
           });
           const track = fresh.getVideoTracks()[0];
-          if (track) {
+          if (track && matchesRequest(track)) {
             await applyTrack(track);
             return;
           }
+          track?.stop();
+        } catch {
+          /* try the next camera */
         }
       }
     } catch {
