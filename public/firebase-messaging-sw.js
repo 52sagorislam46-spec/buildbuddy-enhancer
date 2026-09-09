@@ -81,7 +81,16 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   if (event.notification.tag) ringing.delete(event.notification.tag);
   if (event.action === "decline") return;
-  const link = (event.notification.data && event.notification.data.link) || "/";
+  /* Keep the target same-origin and relative so Android hands it to the
+     installed app instead of opening a fresh Chrome tab. */
+  const raw = (event.notification.data && event.notification.data.link) || "/";
+  let link = "/";
+  try {
+    const url = new URL(raw, self.location.origin);
+    link = url.pathname + url.search + url.hash;
+  } catch (e) {
+    link = "/";
+  }
 
 
   event.waitUntil(
