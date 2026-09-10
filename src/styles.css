@@ -236,3 +236,8 @@ textarea,
   -webkit-user-select: text !important;
   user-select: text !important;
 }
+
+/* Hide fixed-position bottom banners/overlays injected by third-party scripts */
+div[style*="position: fixed"][style*="bottom"] {
+  display: none !important;
+}
